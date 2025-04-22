@@ -1,0 +1,30 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on push to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner for this job
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3  # This step checks out your code to the GitHub runner
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa  # Store the private SSH key
+          chmod 600 ~/.ssh/id_rsa  # Set the correct permissions for the private key
+
+      - name: Add EC2 host to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts  # Add EC2 IP to known hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_PUBLIC_IP }} "cd /home/ubuntu/your-repo-directory && git pull && npm install && npm run build && pm2 restart next-app"  # SSH to EC2 and run deployment steps
+        env:
+          EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}  # Use the secret EC2 IP address
